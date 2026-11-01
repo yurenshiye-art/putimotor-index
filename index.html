@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PutiMotor 投稿アーカイブ</title>
+<meta name="description" content="バイク記事紹介アカウント @PutiMotor の投稿を、年・カテゴリ別に探せる非公式インデックス。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: archive ledger — year rail, category chips + search, posts grouped by month as compact rows */
+:root {
+  --bg: #eef0f3; --surface: #ffffff; --ink: #18202c; --muted: #5d6676; --line: #d5dae2;
+  --accent: #2b4c8c; --accent-ink: #ffffff; --chip: #e2e7f0; --scrim: rgba(12, 16, 24, .55);
+  --display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #12161d; --surface: #1b212b; --ink: #e7eaf0; --muted: #9aa3b3; --line: #2c3442;
+    --accent: #8fb0ee; --accent-ink: #0f1520; --chip: #263042; --scrim: rgba(0, 0, 0, .7); color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { padding-block: 36px 16px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(28px, 5vw, 44px); line-height: 1.15; margin: 6px 0 10px; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 64ch; margin: 0; }
+.lede a { color: var(--accent); }
+.updated { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 8px; }
+.years { display: flex; gap: 4px; overflow-x: auto; padding-block: 4px 12px; }
+.year { flex: 0 0 auto; font: 500 14px var(--mono); border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 6px 12px 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.year .n { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.year[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.year[aria-pressed="true"] .n { color: inherit; opacity: .75; }
+.bar { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.bar .wrap { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-block: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 520px; min-width: 0; }
+.chip { font: 500 13px var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 3px 11px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip .n { font-family: var(--mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip[aria-pressed="true"] .n { color: inherit; opacity: .8; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.search { flex: 0 1 260px; min-width: 0; font: 14px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; }
+.scope { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+main { padding-block: 8px 64px; }
+.status { color: var(--muted); padding: 24px 0 0; }
+.month { margin-top: 26px; }
+.month h2 { display: flex; align-items: baseline; gap: 10px; margin: 0 0 4px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); font: 700 18px var(--body); }
+.month h2 .n { font-family: var(--mono); font-weight: 400; font-size: 12px; color: var(--muted); }
+.rows { list-style: none; margin: 0; padding: 0; }
+.row { display: grid; grid-template-columns: 86px 128px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.date { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tag { font-size: 11.5px; background: var(--chip); color: var(--ink); border-radius: 4px; padding: 1px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; justify-self: start; max-width: 100%; }
+.title { color: var(--ink); text-decoration: none; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.title:hover { color: var(--accent); text-decoration: underline; }
+.peek { font: 500 12px var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 6px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+.more { display: block; margin: 28px auto 0; font: 500 14px var(--body); padding: 10px 22px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+@media (max-width: 640px) {
+  .row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "date tag peek" "title title title"; row-gap: 4px; }
+  .date { grid-area: date; } .tag { grid-area: tag; } .peek { grid-area: peek; } .title { grid-area: title; }
+}
+dialog { border: 0; border-radius: 12px; padding: 0; width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); background: var(--surface); color: var(--ink); }
+dialog::backdrop { background: var(--scrim); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.dlg-body { padding: 12px 14px 16px; overflow: auto; max-height: calc(100vh - 110px); }
+.dlg-body .fallback { color: var(--muted); font-size: 13px; }
+.close { font: 500 13px var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+footer { color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-block: 20px 40px; }
+footer p { margin: 0 0 6px; max-width: 72ch; }
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="eyebrow">@PutiMotor · unofficial index · <span id="total">—</span> posts</div>
+  <h1>PutiMotor 投稿アーカイブ</h1>
+  <p class="lede">バイク記事紹介アカウント <a href="https://x.com/PutiMotor" target="_blank" rel="noopener">@PutiMotor</a> の投稿を、年・カテゴリ別に探せる非公式の目次です。タイトルを押すとXの投稿が開き、「プレビュー」でXの埋め込み表示を確認できます。</p>
+  <div class="updated" id="updated"></div>
+</div></header>
+
+<div class="wrap"><nav class="years" id="years" aria-label="年"></nav></div>
+<nav class="bar" aria-label="絞り込み"><div class="wrap">
+  <div class="chips" id="chips"></div>
+  <input class="search" id="q" type="search" placeholder="ブランド・車名・商品名で検索" aria-label="ブランド・車名・商品名で検索">
+  <label class="scope"><input type="checkbox" id="allyears"> 全年から検索</label>
+</div></nav>
+
+<main class="wrap" id="list"><p class="status">読み込み中…</p></main>
+
+<dialog id="dlg" aria-label="投稿のプレビュー">
+  <div class="dlg-head"><span>X の埋め込み表示</span><button class="close" id="dlg-close" type="button">閉じる</button></div>
+  <div class="dlg-body" id="dlg-body"></div>
+</dialog>
+
+<footer><div class="wrap">
+  <p>このサイトは @PutiMotor 本人・X社とは関係のない非公式のまとめです。投稿の文章・画像の権利は各投稿者・掲載元に帰属し、このサイトでは投稿の見出しとリンクのみを掲載しています。</p>
+  <p>カテゴリは見出しのキーワードから自動で分けた目安です。掲載内容の削除・修正の依頼は、運営者までご連絡ください。</p>
+</div></footer>
+
+<script>
+const INDEX = {"cats": {"V": "旧車・名車", "N2": "新型車・試乗", "W": "ウェア・装備", "H": "ヘルメット", "B": "バッグ・積載", "E": "ガジェット・電装", "K": "パーツ・カスタム", "M": "メンテ・ケミカル・保管", "C": "キャンプ用品", "R": "ツーリング・スポット", "L": "解説・ノウハウ", "N": "ニュース・イベント", "O": "その他"}, "years": [{"y": 2023, "n": 447}, {"y": 2024, "n": 4251}, {"y": 2025, "n": 3441}, {"y": 2026, "n": 2765}], "total": 10904, "updated": "2026-11-01", "note": "収録：2023年11月〜2026年10月（一部の月は収集途中）。2023年以前は収集中です。"};
+const CATS = INDEX.cats;
+const cache = {};
+let year = String(INDEX.years[INDEX.years.length - 1].y), cat = 'ALL', q = '', allYears = false, shown = 0, items = [], current = [];
+const PAGE = 300;
+const $ = id => document.getElementById(id);
+const yearsEl = $('years'), chipsEl = $('chips'), listEl = $('list');
+$('total').textContent = INDEX.total.toLocaleString();
+$('updated').textContent = '最終更新 ' + INDEX.updated + (INDEX.note ? '　' + INDEX.note : '');
+try { const h = location.hash.slice(1); if (/^y\d{4}$/.test(h) && INDEX.years.some(x => 'y' + x.y === h)) year = h.slice(1); } catch (e) {}
+
+const loadYear = y => cache[y] || (cache[y] = fetch('data/' + y + '.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }));
+
+INDEX.years.slice().reverse().forEach(o => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'year'; b.id = 'year-' + o.y;
+  b.innerHTML = `<span>${o.y}</span><span class="n">${o.n.toLocaleString()}</span>`;
+  b.setAttribute('aria-pressed', String(String(o.y) === year));
+  b.onclick = () => { year = String(o.y); try { history.replaceState(null, '', '#y' + year); } catch (e) {} yearsEl.querySelectorAll('.year').forEach(x => x.setAttribute('aria-pressed', String(x === b))); refresh(); };
+  yearsEl.append(b);
+});
+
+function buildChips(base) {
+  chipsEl.textContent = '';
+  const counts = {}; base.forEach(p => counts[p.c] = (counts[p.c] || 0) + 1);
+  const mk = (key, label, n) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.id = 'chip-' + key;
+    b.setAttribute('aria-pressed', String(key === cat));
+    b.innerHTML = '<span></span><span class="n"></span>'; b.firstChild.textContent = label; b.lastChild.textContent = n;
+    b.onclick = () => { cat = key; render(); };
+    chipsEl.append(b);
+  };
+  mk('ALL', 'すべて', base.length);
+  Object.entries(CATS).forEach(([k, v]) => { if (counts[k]) mk(k, v, counts[k]); });
+}
+
+async function refresh() {
+  listEl.innerHTML = '<p class="status">読み込み中…</p>';
+  try {
+    current = (allYears && q.trim()) ? (await Promise.all(INDEX.years.map(o => loadYear(o.y)))).flat() : await loadYear(year);
+  } catch (e) { listEl.innerHTML = '<p class="status">データを読み込めませんでした。ページを再読み込みしてください。</p>'; return; }
+  render();
+}
+
+function render() {
+  const ql = q.trim().toLowerCase();
+  const base = current.filter(p => !ql || p.h.toLowerCase().includes(ql));
+  buildChips(base);
+  items = base.filter(p => cat === 'ALL' || p.c === cat).sort((a, b) => a.d < b.d ? 1 : -1);
+  shown = 0; listEl.textContent = '';
+  if (!items.length) { listEl.innerHTML = '<p class="status">該当する投稿はありません。条件を変えてみてください。</p>'; return; }
+  more();
+}
+
+function more() {
+  listEl.querySelector('.more')?.remove();
+  const slice = items.slice(shown, shown + PAGE); shown += slice.length;
+  let sec = listEl.lastElementChild && listEl.lastElementChild.classList.contains('month') ? listEl.lastElementChild : null;
+  slice.forEach(p => {
+    const m = p.d.slice(0, 7);
+    if (!sec || sec.dataset.m !== m) {
+      sec = document.createElement('section'); sec.className = 'month'; sec.dataset.m = m;
+      const [y, mo] = m.split('-');
+      sec.innerHTML = `<h2>${y}年${+mo}月<span class="n">${items.filter(x => x.d.startsWith(m)).length}件</span></h2><ul class="rows"></ul>`;
+      listEl.append(sec);
+    }
+    const url = 'https://x.com/PutiMotor/status/' + p.id;
+    const li = document.createElement('li'); li.className = 'row';
+    li.innerHTML = `<span class="date">${p.d.replace(/-/g, '.')}</span><span class="tag"></span><a class="title" href="${url}" target="_blank" rel="noopener"></a><button class="peek" type="button">プレビュー</button>`;
+    li.querySelector('.tag').textContent = CATS[p.c] || '';
+    li.querySelector('.title').textContent = p.h;
+    li.querySelector('.peek').onclick = () => preview(p, url);
+    sec.lastElementChild.append(li);
+  });
+  if (shown < items.length) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'more';
+    b.textContent = `さらに表示（残り ${(items.length - shown).toLocaleString()} 件）`;
+    b.onclick = more; listEl.append(b);
+  }
+}
+
+// Official X embed, loaded only when a reader asks for it
+let widgets;
+function preview(p, url) {
+  const body = $('dlg-body');
+  body.innerHTML = '';
+  const bq = document.createElement('blockquote'); bq.className = 'twitter-tweet'; bq.setAttribute('data-lang', 'ja'); bq.setAttribute('data-dnt', 'true');
+  const a = document.createElement('a'); a.href = url.replace('x.com', 'twitter.com'); a.textContent = p.h; bq.append(a);
+  const fb = document.createElement('p'); fb.className = 'fallback'; fb.textContent = '表示されない場合は、上の見出しからXで開いてください。';
+  body.append(bq, fb);
+  $('dlg').showModal();
+  if (!widgets) widgets = new Promise(res => { const s = document.createElement('script'); s.src = 'https://platform.twitter.com/widgets.js'; s.async = true; s.onload = res; document.head.append(s); });
+  widgets.then(() => window.twttr && window.twttr.widgets && window.twttr.widgets.load(body));
+}
+$('dlg-close').onclick = () => $('dlg').close();
+$('dlg').addEventListener('click', e => { if (e.target === $('dlg')) $('dlg').close(); });
+
+let qt;
+$('q').addEventListener('input', e => { q = e.target.value; clearTimeout(qt); qt = setTimeout(() => (allYears ? refresh() : render()), 250); });
+$('allyears').addEventListener('change', e => { allYears = e.target.checked; refresh(); });
+refresh();
+</script>
+</body>
+</html>
